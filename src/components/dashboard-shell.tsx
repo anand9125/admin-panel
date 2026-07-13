@@ -4,24 +4,10 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard, Users, ArrowLeftRight, Bot, ShieldCheck, Settings,
-  Search, Bell, Menu, X, ChevronDown,
-} from "lucide-react";
+import { ShieldCheck, Settings, Bell, Menu, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { label: "Overview", icon: LayoutDashboard, href: "/" },
-  { label: "Traders", icon: Users, href: "#" },
-  { label: "Trades", icon: ArrowLeftRight, href: "#" },
-  { label: "Bots", icon: Bot, href: "#" },
-  { label: "Access", icon: ShieldCheck, href: "/access" },
-];
-
-function isActive(pathname: string, href: string) {
-  if (href === "#") return false;
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
-}
+const NAV = [{ label: "Access", icon: ShieldCheck, href: "/" }];
 
 function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -38,7 +24,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         <p className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-muted-2">Platform</p>
         {NAV.map((item) => {
           const Icon = item.icon;
-          const active = isActive(pathname, item.href);
+          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           return (
             <Link
               key={item.label}
@@ -47,9 +33,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
               aria-current={active ? "page" : undefined}
               className={cn(
                 "focus-ring flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
-                active
-                  ? "bg-accent/12 text-foreground"
-                  : "text-muted hover:bg-surface-2 hover:text-foreground",
+                active ? "bg-accent/12 text-foreground" : "text-muted hover:bg-surface-2 hover:text-foreground",
               )}
             >
               <Icon className={cn("size-[18px] shrink-0", active ? "text-accent" : "text-muted-2")} />
@@ -61,8 +45,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="px-3 py-3">
         <a href="#" className="focus-ring flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-foreground">
-          <Settings className="size-[18px] text-muted-2" />
-          Settings
+          <Settings className="size-[18px] text-muted-2" /> Settings
         </a>
       </div>
 
@@ -84,12 +67,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="min-h-screen bg-background">
-      {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-border bg-sidebar lg:block">
         <SidebarBody />
       </aside>
 
-      {/* Mobile drawer */}
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button aria-label="Close menu" onClick={() => setOpen(false)} className="absolute inset-0 bg-black/60" />
@@ -103,22 +84,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="lg:pl-64">
-        {/* Topbar */}
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur sm:px-6">
           <button aria-label="Open menu" onClick={() => setOpen(true)} className="focus-ring flex size-10 items-center justify-center rounded-lg text-muted hover:bg-surface-2 lg:hidden">
             <Menu className="size-5" />
           </button>
-
-          <label className="relative hidden max-w-sm flex-1 items-center sm:flex">
-            <Search className="pointer-events-none absolute left-3 size-4 text-muted-2" />
-            <span className="sr-only">Search</span>
-            <input
-              type="search"
-              placeholder="Search traders, tokens, trades…"
-              className="focus-ring h-10 w-full rounded-lg border border-border bg-surface pl-9 pr-3 text-sm text-foreground placeholder:text-muted-2"
-            />
-          </label>
-
+          <span className="text-sm font-medium lg:hidden">Trenchers Admin</span>
           <div className="ml-auto flex items-center gap-1.5">
             <button aria-label="Notifications" className="focus-ring relative flex size-10 items-center justify-center rounded-lg text-muted hover:bg-surface-2">
               <Bell className="size-5" />
@@ -128,7 +98,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );
