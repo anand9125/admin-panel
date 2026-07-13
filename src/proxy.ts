@@ -16,6 +16,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|login|_next/static|_next/image|favicon.ico|logo.png|logo-mark.svg|logo-full.svg|robots.txt).*)",
+    "/((?!api/auth|login|_next/static|_next/image|favicon.ico|robots.txt).*)",
   ],
 };
