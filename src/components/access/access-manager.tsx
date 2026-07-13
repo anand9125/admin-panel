@@ -187,7 +187,7 @@ export function AccessManager() {
           <EmptyState hasAny={allowedAll.length > 0} onAdd={() => setAdding(true)} env={env} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-sm">
+            <table className="w-full min-w-[600px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-2">
                   <th className="px-5 py-2.5 font-medium">Identity</th>
@@ -195,7 +195,6 @@ export function AccessManager() {
                   <th className="px-4 py-2.5 font-medium">
                     <span className="inline-flex items-center gap-1.5"><Zap className="size-3.5 text-accent" /> Live bot</span>
                   </th>
-                  <th className="px-4 py-2.5 font-medium">Added by</th>
                   <th className="px-4 py-2.5 text-right font-medium">Actions</th>
                 </tr>
               </thead>
@@ -223,10 +222,6 @@ export function AccessManager() {
                             {e.liveBot ? "On" : "Off"}
                           </span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted">
-                        {e.addedBy ?? "—"}
-                        {e.addedAt && <span className="text-muted-2"> · {e.addedAt}</span>}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
