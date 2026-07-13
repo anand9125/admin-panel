@@ -6,14 +6,9 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Trenchers — Trade the trenches, faster",
-  description:
-    "The fastest way to trade Solana. A real-time token feed, AI trading agents, and pro-grade one-click execution — all in one terminal.",
-  openGraph: {
-    title: "Trenchers — Trade the trenches, faster",
-    description: "Real-time token feed, AI trading agents, and one-click execution for Solana.",
-    type: "website",
-  },
+  title: "Trenchers Admin — Dashboard",
+  description: "Operations dashboard for the Trenchers Solana trading platform.",
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

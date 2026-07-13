@@ -1,37 +1,34 @@
 @import "tailwindcss";
 
 /* ================================================================== */
-/* Trenchers — landing page theme (dark, premium crypto)              */
+/* Trenchers Admin — dashboard theme (dark, aurora accent)            */
 /* ================================================================== */
 
 :root {
-  --background: #08080a;
-  --surface: #101013;
-  --surface-2: #17171b;
+  --background: #0a0a0c;
+  --surface: #101014;      /* cards */
+  --surface-2: #16161c;    /* hover / elevated */
+  --sidebar: #0c0c0f;
   --foreground: #f4f4f5;
-  --muted: #a1a1aa;
-  --muted-2: #71717a;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.14);
+  --muted: #a1a1aa;        /* AA on surface */
+  --muted-2: #7c7c86;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.12);
 
-  /* ---- PALETTE (the only block to change per theme) --------------- */
-  /* Aurora: luminous violet -> cyan on near-black. */
-  --accent: #7c6cff; /* violet-indigo */
-  --accent-2: #22d3ee; /* cyan (gradient depth) */
-  --accent-soft: #b3a9ff; /* light violet (headline gradient tip) */
-  --btn-from: #8f80ff;
-  --glow-1: rgba(124, 108, 255, 0.22); /* violet */
-  --glow-2: rgba(34, 211, 238, 0.12); /* cyan */
-  --glow-3: rgba(168, 85, 247, 0.07); /* soft magenta depth */
-  --accent-shadow: rgba(124, 108, 255, 0.5);
-  --select: rgba(124, 108, 255, 0.3);
-  /* ---------------------------------------------------------------- */
+  --accent: #7c6cff;       /* violet */
+  --accent-2: #22d3ee;     /* cyan */
+  --accent-soft: #b3a9ff;
+  --success: #34d399;
+  --danger: #fb7185;
+  --warning: #fbbf24;
+  --ring: #7c6cff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-sidebar: var(--sidebar);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-2: var(--muted-2);
@@ -40,6 +37,10 @@
   --color-accent: var(--accent);
   --color-accent-2: var(--accent-2);
   --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-ring: var(--ring);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -62,110 +63,42 @@
     text-rendering: optimizeLegibility;
   }
   ::selection {
-    background: var(--select);
+    background: rgba(124, 108, 255, 0.3);
   }
 }
 
-/* ---- Backdrop: aurora glow + fine grid ---------------------------- */
-.bg-hero {
-  background:
-    radial-gradient(60rem 42rem at 50% -12%, var(--glow-1), transparent 60%),
-    radial-gradient(50rem 40rem at 85% 0%, var(--glow-2), transparent 62%),
-    radial-gradient(40rem 30rem at 10% 8%, var(--glow-3), transparent 60%);
-}
-.bg-grid::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 30%, transparent 78%);
-}
-
-/* ---- Gradient text ------------------------------------------------ */
-.text-gradient {
-  background: linear-gradient(96deg, #ffffff 0%, var(--accent-soft) 52%, var(--accent) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.text-gradient-accent {
-  background: linear-gradient(96deg, var(--accent) 0%, var(--accent-2) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-/* ---- Surfaces ----------------------------------------------------- */
+/* Card surface */
 .card {
-  position: relative;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)) , var(--surface);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    var(--surface);
   border: 1px solid var(--border);
   border-radius: 1rem;
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
-  transition:
-    border-color 0.25s var(--ease-out-expo),
-    transform 0.25s var(--ease-out-expo),
-    box-shadow 0.25s var(--ease-out-expo);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .card:hover {
-    transform: translateY(-3px);
-    border-color: var(--border-strong);
-    box-shadow:
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-      0 20px 40px -20px var(--accent-shadow);
-  }
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
 }
 
-/* ---- Buttons ------------------------------------------------------ */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  border-radius: 0.75rem;
-  transition: all 0.2s var(--ease-out-expo);
+/* Focus ring (accessibility) */
+.focus-ring {
   outline: none;
 }
-.btn:focus-visible {
+.focus-ring:focus-visible {
   box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--accent);
-}
-.btn-primary {
-  color: #fff;
-  background: linear-gradient(180deg, var(--btn-from) 0%, var(--accent) 100%);
-  box-shadow:
-    0 1px 0 0 rgba(255, 255, 255, 0.2) inset,
-    0 8px 24px -8px var(--accent-shadow);
-}
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 1px 0 0 rgba(255, 255, 255, 0.25) inset,
-    0 12px 30px -8px var(--accent-shadow);
-}
-.btn-ghost {
-  color: var(--foreground);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border);
-}
-.btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--border-strong);
+  border-radius: 0.5rem;
 }
 
-/* ---- Entrance ----------------------------------------------------- */
+/* Subtle content entrance */
 @keyframes rise {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .rise { animation: rise 0.7s var(--ease-out-expo) both; }
+  .rise { animation: rise 0.3s var(--ease-out-expo) both; }
 }
+
+/* Scrollbar */
+.scrollbar-subtle { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+.scrollbar-subtle::-webkit-scrollbar { width: 8px; height: 8px; }
+.scrollbar-subtle::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
