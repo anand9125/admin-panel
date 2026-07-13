@@ -1,56 +1,52 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------------------------ */
-/* Trenchers.AI — Operations Dashboard theme (dark-first)             */
+/* Trenchers — Platform Access panel theme (dark-first)               */
+/* Mirrors the trenchers_fe trading app: layered blacks, crimson accent */
 /* ------------------------------------------------------------------ */
 
 :root {
-  --background: #0a0a0b;
-  --background-elevated: #151517;
+  --background: #0f0f0f;
+  --background-elevated: #1a1a1a;
+  --surface: #151515;
   --foreground: #ededed;
-  --muted: #8b8b90;
+  --muted: #8a8a8f;
   --muted-faint: #5b5b60;
-  --border: #1f1f23;
-  --border-strong: #2c2c31;
+  --border: #232323;
+  --border-strong: #303030;
 
-  /* Restrained palette: ONE brand accent (blue), the rest neutral.        */
-  /* green / amber / red are reserved strictly for status (ok/warn/crit).  */
-  --accent-blue: #3b9bff; /* brand · interactive · default accent */
-  --accent-green: #3ecf8e; /* status: healthy / ok */
-  --accent-amber: #e0a23a; /* status: warning */
-  --accent-red: #f0616d; /* status: critical */
-  --accent-violet: #3b9bff; /* (removed) → maps to brand blue */
-  --ring: #3b9bff;
-
-  /* Charts: blue-led, neutral supporting tones (no rainbow) */
-  --chart-1: #3b9bff;
-  --chart-2: #3ecf8e;
-  --chart-3: #8b8b90;
-  --chart-4: #e0a23a;
-  --chart-5: #5b5b60;
-  --chart-grid: rgba(255, 255, 255, 0.05);
-  --chart-axis: #8b8b90;
-  --popover: #151517;
-  --popover-foreground: #ededed;
+  /* ONE brand accent (crimson). green/amber/red are status-only. blue = info. */
+  --accent: #ff0751; /* brand · primary emphasis · active */
+  --accent-highlight: #ff85a9; /* brand gradient end */
+  --accent-blue: #5b8cff; /* info: staging / email */
+  --accent-green: #2fe0a4; /* status: allowed / ok */
+  --accent-amber: #e0a23a; /* status: pending / warning */
+  --accent-red: #ec397a; /* status: destructive / removed */
+  --ring: #ff0751;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-background-elevated: var(--background-elevated);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-faint: var(--muted-faint);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
-  --color-accent-green: var(--accent-green);
-  --color-accent-violet: var(--accent-violet);
+  --color-accent: var(--accent);
+  --color-accent-highlight: var(--accent-highlight);
   --color-accent-blue: var(--accent-blue);
+  --color-accent-green: var(--accent-green);
   --color-accent-amber: var(--accent-amber);
   --color-accent-red: var(--accent-red);
   --color-ring: var(--ring);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
 * {
@@ -69,60 +65,90 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Ambient background glow, animated very slowly */
+/* Ambient background glow — crimson-tinted, very subtle */
 .bg-aurora {
   position: relative;
   background:
-    radial-gradient(60rem 42rem at 50% -18%, rgba(59, 155, 255, 0.07), transparent 70%),
-    radial-gradient(46rem 36rem at 90% 4%, rgba(59, 155, 255, 0.04), transparent 72%);
+    radial-gradient(58rem 40rem at 50% -20%, rgba(255, 7, 81, 0.06), transparent 70%),
+    radial-gradient(44rem 34rem at 92% 2%, rgba(255, 7, 81, 0.035), transparent 72%);
 }
 
-/* Faint technical grid overlay */
+/* Faint technical grid overlay, masked so it fades toward the bottom */
 .bg-grid::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 35%, transparent 80%);
 }
 
 .text-gradient {
-  background: linear-gradient(100deg, #3b9bff 0%, #7cc4ff 100%);
+  background: linear-gradient(100deg, var(--accent) 0%, var(--accent-highlight) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-/* Soft inner-glow border for elevated panels */
+/* Elevated panel: faint top sheen + hairline + soft drop */
 .panel {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)) ,
-    var(--background-elevated);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0)),
+    var(--surface);
   box-shadow:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.03),
     0 1px 2px 0 rgba(0, 0, 0, 0.4);
 }
 
+/* Interactive card: panel that lifts on hover */
+.card-interactive {
+  transition:
+    border-color 0.18s var(--ease-out-quart),
+    transform 0.18s var(--ease-out-quart),
+    box-shadow 0.18s var(--ease-out-quart);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .card-interactive:hover {
+    transform: translateY(-1px);
+    border-color: var(--border-strong);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+      0 6px 20px -8px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* Staggered entrance for content blocks */
 @keyframes float-up {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
-.animate-in {
-  animation: float-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+@media (prefers-reduced-motion: no-preference) {
+  .animate-in {
+    animation: float-up 0.5s var(--ease-out-expo) both;
+  }
 }
 
-/* Thin, theme-matched scrollbar — replaces the chunky default in scroll panes.
-   Track is invisible; the thumb is a subtle pill that brightens on hover. */
+/* Live status dot */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pulse-dot {
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+}
+
+/* Thin, theme-matched scrollbar */
 .scrollbar-subtle {
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
@@ -142,15 +168,6 @@ body {
 }
 .scrollbar-subtle:hover::-webkit-scrollbar-thumb {
   background-color: var(--muted-faint);
-}
-.scrollbar-subtle::-webkit-scrollbar-thumb:hover {
-  background-color: var(--muted);
-}
-
-@keyframes dash-flow {
-  to {
-    stroke-dashoffset: -1000;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

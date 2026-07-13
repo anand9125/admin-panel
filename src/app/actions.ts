@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth, emailAllowed } from "@/auth";
+import { auth, emailAllowed, signOut } from "@/auth";
 import {
   addWhitelist,
   removeWhitelist,
@@ -14,6 +14,11 @@ import {
 export interface ActionResult {
   ok?: true;
   error?: string;
+}
+
+/** Sign out and return to the login screen. */
+export async function logout(): Promise<void> {
+  await signOut({ redirectTo: "/login" });
 }
 
 /** Require an allowed, signed-in user; return their email (used for attribution). */
@@ -54,6 +59,7 @@ export async function addEntry(env: string, formData: FormData): Promise<ActionR
 
     await addWhitelist(platform, { kind, value, note, addedBy: actor });
     revalidatePath("/");
+    revalidatePath("/access");
     return { ok: true };
   } catch (e) {
     return { error: friendly(e) };
@@ -71,6 +77,7 @@ export async function toggleEntry(
     await requireUser();
     await setWhitelistEnabled(asPlatform(env), id, enabled);
     revalidatePath("/");
+    revalidatePath("/access");
     return { ok: true };
   } catch (e) {
     return { error: friendly(e) };
@@ -83,6 +90,7 @@ export async function deleteEntry(env: string, id: string, _value?: string): Pro
     await requireUser();
     await removeWhitelist(asPlatform(env), id);
     revalidatePath("/");
+    revalidatePath("/access");
     return { ok: true };
   } catch (e) {
     return { error: friendly(e) };

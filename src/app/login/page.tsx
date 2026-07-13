@@ -17,7 +17,7 @@ export default async function LoginPage({
     <div className="bg-aurora bg-grid relative flex min-h-screen items-center justify-center px-6">
       <div className="panel w-full max-w-sm rounded-2xl border border-border p-8">
         <div className="flex flex-col items-center text-center">
-          <LogoMark className="size-10" />
+          <LogoMark className="h-10 w-auto" />
           <h1 className="mt-4 text-lg font-semibold tracking-tight">
             Trenchers<span className="text-gradient">.AI</span>
           </h1>
