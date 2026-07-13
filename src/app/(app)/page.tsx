@@ -2,13 +2,11 @@ import {
   ArrowUpRight, ArrowDownRight, Bot, UserPlus, ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DashboardShell } from "@/components/dashboard-shell";
 import { Sparkline, AreaChart } from "@/components/dashboard/charts";
 import { KPIS, VOLUME_SERIES, LAUNCHPADS, ACTIVITY, type Kpi, type Activity } from "@/lib/dashboard-data";
 
 export default function DashboardPage() {
   return (
-    <DashboardShell>
       <div className="rise space-y-6">
         {/* Page header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -100,7 +98,6 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
-    </DashboardShell>
   );
 }
 

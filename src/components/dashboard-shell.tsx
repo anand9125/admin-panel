@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, ArrowLeftRight, Bot, ShieldCheck, Settings,
   Search, Bell, Menu, X, ChevronDown,
@@ -9,14 +11,20 @@ import {
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { label: "Overview", icon: LayoutDashboard, active: true },
-  { label: "Traders", icon: Users },
-  { label: "Trades", icon: ArrowLeftRight },
-  { label: "Bots", icon: Bot },
-  { label: "Access", icon: ShieldCheck },
+  { label: "Overview", icon: LayoutDashboard, href: "/" },
+  { label: "Traders", icon: Users, href: "#" },
+  { label: "Trades", icon: ArrowLeftRight, href: "#" },
+  { label: "Bots", icon: Bot, href: "#" },
+  { label: "Access", icon: ShieldCheck, href: "/access" },
 ];
 
+function isActive(pathname: string, href: string) {
+  if (href === "#") return false;
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+}
+
 function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = usePathname();
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center gap-2.5 px-5">
@@ -30,22 +38,23 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         <p className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-muted-2">Platform</p>
         {NAV.map((item) => {
           const Icon = item.icon;
+          const active = isActive(pathname, item.href);
           return (
-            <a
+            <Link
               key={item.label}
-              href="#"
+              href={item.href}
               onClick={onNavigate}
-              aria-current={item.active ? "page" : undefined}
+              aria-current={active ? "page" : undefined}
               className={cn(
                 "focus-ring flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
-                item.active
+                active
                   ? "bg-accent/12 text-foreground"
                   : "text-muted hover:bg-surface-2 hover:text-foreground",
               )}
             >
-              <Icon className={cn("size-[18px] shrink-0", item.active ? "text-accent" : "text-muted-2")} />
+              <Icon className={cn("size-[18px] shrink-0", active ? "text-accent" : "text-muted-2")} />
               {item.label}
-            </a>
+            </Link>
           );
         })}
       </nav>
