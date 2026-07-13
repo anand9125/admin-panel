@@ -3,10 +3,11 @@
 import { useMemo, useState } from "react";
 import {
   Mail, Wallet, Plus, Check, X, Search, Clock, AlertTriangle,
-  ShieldCheck, Ban, RotateCcw, Trash2, CheckCircle2, Inbox,
+  ShieldCheck, Ban, RotateCcw, Trash2, CheckCircle2, Inbox, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
+import { Switch } from "@/components/ui/switch";
 import { INITIAL_ACCESS, type Env, type Kind, type AccessEntry } from "@/lib/access-data";
 
 const ENVS: Env[] = ["staging", "production"];
@@ -29,6 +30,7 @@ export function AccessManager() {
   const allowedAll = entries.filter((e) => e.status === "allowed");
   const emails = entries.filter((e) => e.kind === "email").length;
   const wallets = entries.filter((e) => e.kind === "wallet").length;
+  const liveBots = allowedAll.filter((e) => e.liveBot).length;
 
   const allowed = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -51,9 +53,11 @@ export function AccessManager() {
   };
   const toggleEnabled = (id: string) =>
     update((list) => list.map((e) => (e.id === id ? { ...e, enabled: e.enabled === false } : e)));
-  const add = (kind: Kind, value: string, note: string) =>
+  const toggleLiveBot = (id: string) =>
+    update((list) => list.map((e) => (e.id === id ? { ...e, liveBot: !e.liveBot } : e)));
+  const add = (kind: Kind, value: string, note: string, liveBot: boolean) =>
     update((list) => [
-      { id: newId(), kind, value, note: note || undefined, status: "allowed", enabled: true, addedBy: "anand@trenchers.ai", addedAt: "just now" },
+      { id: newId(), kind, value, note: note || undefined, status: "allowed", enabled: true, liveBot, addedBy: "anand@trenchers.ai", addedAt: "just now" },
       ...list,
     ]);
 
@@ -104,9 +108,10 @@ export function AccessManager() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Stat icon={CheckCircle2} label="Allowed" value={allowedAll.length} tone="success" />
         <Stat icon={Clock} label="Pending" value={pending.length} tone="warning" />
+        <Stat icon={Zap} label="Live bots" value={liveBots} tone="accent" />
         <Stat icon={Mail} label="Emails" value={emails} tone="muted" />
         <Stat icon={Wallet} label="Wallets" value={wallets} tone="muted" />
       </div>
@@ -182,11 +187,14 @@ export function AccessManager() {
           <EmptyState hasAny={allowedAll.length > 0} onAdd={() => setAdding(true)} env={env} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[760px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-2">
                   <th className="px-5 py-2.5 font-medium">Identity</th>
                   <th className="px-4 py-2.5 font-medium">Status</th>
+                  <th className="px-4 py-2.5 font-medium">
+                    <span className="inline-flex items-center gap-1.5"><Zap className="size-3.5 text-accent" /> Live bot</span>
+                  </th>
                   <th className="px-4 py-2.5 font-medium">Added by</th>
                   <th className="px-4 py-2.5 text-right font-medium">Actions</th>
                 </tr>
@@ -203,6 +211,18 @@ export function AccessManager() {
                         ) : (
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-success/12 px-2 py-0.5 text-xs font-medium text-success"><span className="size-1.5 rounded-full bg-success" /> Allowed</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={!!e.liveBot}
+                            onChange={() => toggleLiveBot(e.id)}
+                            label={`Live bot access for ${e.value}`}
+                          />
+                          <span className={cn("text-xs", e.liveBot ? "text-accent" : "text-muted-2")}>
+                            {e.liveBot ? "On" : "Off"}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-muted">
                         {e.addedBy ?? "—"}
@@ -248,8 +268,8 @@ function IdentityCell({ entry }: { entry: AccessEntry }) {
   );
 }
 
-function Stat({ icon: Icon, label, value, tone }: { icon: typeof Mail; label: string; value: number; tone: "success" | "warning" | "muted" }) {
-  const toneCls = { success: "text-success", warning: "text-warning", muted: "text-muted-2" }[tone];
+function Stat({ icon: Icon, label, value, tone }: { icon: typeof Mail; label: string; value: number; tone: "success" | "warning" | "muted" | "accent" }) {
+  const toneCls = { success: "text-success", warning: "text-warning", muted: "text-muted-2", accent: "text-accent" }[tone];
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between">
@@ -278,10 +298,11 @@ function EmptyState({ hasAny, onAdd, env }: { hasAny: boolean; onAdd: () => void
   );
 }
 
-function AddModal({ open, onClose, env, onAdd }: { open: boolean; onClose: () => void; env: Env; onAdd: (k: Kind, v: string, n: string) => void }) {
+function AddModal({ open, onClose, env, onAdd }: { open: boolean; onClose: () => void; env: Env; onAdd: (k: Kind, v: string, n: string, liveBot: boolean) => void }) {
   const [kind, setKind] = useState<Kind>("email");
   const [value, setValue] = useState("");
   const [note, setNote] = useState("");
+  const [liveBot, setLiveBot] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const submit = (e: React.FormEvent) => {
@@ -289,8 +310,8 @@ function AddModal({ open, onClose, env, onAdd }: { open: boolean; onClose: () =>
     const v = value.trim();
     if (kind === "email" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return setError("Enter a valid email address.");
     if (kind === "wallet" && v.length < 32) return setError("Enter a valid base58 wallet address.");
-    onAdd(kind, v, note.trim());
-    setValue(""); setNote(""); setError(null);
+    onAdd(kind, v, note.trim(), liveBot);
+    setValue(""); setNote(""); setLiveBot(false); setError(null);
     onClose();
   };
 
@@ -339,6 +360,16 @@ function AddModal({ open, onClose, env, onAdd }: { open: boolean; onClose: () =>
             placeholder="e.g. KOL, referral, team"
             className="focus-ring h-10 w-full rounded-lg border border-border bg-background px-3 text-sm placeholder:text-muted-2"
           />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-2.5">
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-accent/12 text-accent"><Zap className="size-4" /></span>
+            <div>
+              <p className="text-sm font-medium">Live bot access</p>
+              <p className="text-xs text-muted-2">Allow real-money bot trading</p>
+            </div>
+          </div>
+          <Switch checked={liveBot} onChange={setLiveBot} label="Grant live bot access" />
         </div>
         {error && <p role="alert" className="text-xs text-danger">{error}</p>}
         <div className="flex justify-end gap-2 pt-1">
