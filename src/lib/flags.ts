@@ -26,5 +26,25 @@ export const FLAG_GROUPS = ["Trading", "Platform", "Access"] as const;
 
 export type Flags = Record<string, boolean>;
 
-export const flagCount = (flags?: Flags) => (flags ? Object.values(flags).filter(Boolean).length : 0);
-export const enabledFlags = (flags?: Flags) => FEATURE_FLAGS.filter((f) => flags?.[f.id]);
+/**
+ * Global rollout for a flag:
+ *  - "everyone": on for every allowed user
+ *  - "off": off for everyone
+ *  - "custom": decided per-user
+ */
+export type FlagMode = "off" | "custom" | "everyone";
+export type FlagConfig = Record<string, FlagMode>;
+
+/** Default config: every flag starts in per-user "custom" mode. */
+export const defaultFlagConfig = (): FlagConfig =>
+  Object.fromEntries(FEATURE_FLAGS.map((f) => [f.id, "custom" as FlagMode]));
+
+/** Effective value for a user, combining global mode + their per-user override. */
+export const effectiveFlag = (mode: FlagMode | undefined, userValue?: boolean): boolean =>
+  mode === "everyone" ? true : mode === "off" ? false : !!userValue;
+
+/** Flags that are effectively ON for a user, given the env's config. */
+export const enabledFlags = (flags: Flags | undefined, cfg?: FlagConfig) =>
+  FEATURE_FLAGS.filter((f) => effectiveFlag(cfg?.[f.id], flags?.[f.id]));
+
+export const flagCount = (flags: Flags | undefined, cfg?: FlagConfig) => enabledFlags(flags, cfg).length;

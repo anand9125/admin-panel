@@ -3,28 +3,40 @@
 import { useMemo, useState } from "react";
 import {
   Mail, Wallet, Plus, Check, X, Search, Clock, AlertTriangle,
-  ShieldCheck, Trash2, CheckCircle2, Inbox, ChevronRight, Ban,
+  ShieldCheck, Trash2, CheckCircle2, Inbox, ChevronRight, Ban, Info, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/ui/modal";
 import { Drawer } from "@/components/ui/drawer";
 import { Switch } from "@/components/ui/switch";
 import { INITIAL_ACCESS, type Env, type Kind, type AccessEntry } from "@/lib/access-data";
-import { FEATURE_FLAGS, FLAG_GROUPS, enabledFlags, flagCount } from "@/lib/flags";
+import {
+  FEATURE_FLAGS, FLAG_GROUPS, enabledFlags, flagCount,
+  defaultFlagConfig, effectiveFlag, type FlagMode, type FlagConfig,
+} from "@/lib/flags";
 
 const ENVS: Env[] = ["staging", "production"];
+type View = "users" | "flags";
 let idc = 1000;
 const newId = () => `n${++idc}`;
 
 export function AccessManager() {
   const [env, setEnv] = useState<Env>("production");
+  const [view, setView] = useState<View>("users");
   const [data, setData] = useState(INITIAL_ACCESS);
+  const [flagConfig, setFlagConfig] = useState<Record<Env, FlagConfig>>({
+    staging: defaultFlagConfig(),
+    production: defaultFlagConfig(),
+  });
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | Kind>("all");
   const [adding, setAdding] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const entries = data[env];
+  const cfg = flagConfig[env];
+  const setFlagMode = (flagId: string, mode: FlagMode) =>
+    setFlagConfig((c) => ({ ...c, [env]: { ...c[env], [flagId]: mode } }));
   const update = (fn: (list: AccessEntry[]) => AccessEntry[]) => setData((d) => ({ ...d, [env]: fn(d[env]) }));
 
   const pending = entries.filter((e) => e.status === "pending");
@@ -67,35 +79,50 @@ export function AccessManager() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Platform access</h1>
           <p className="mt-0.5 max-w-xl text-sm text-muted">
-            Control who can log into Trenchers and which features they can use. Open a user to
-            toggle their feature flags.
+            Control who can log into Trenchers and which features they can use — per user, or
+            rolled out to everyone.
           </p>
         </div>
-        <button onClick={() => setAdding(true)} className={btn.primary}><Plus className="size-4" /> Add access</button>
-      </div>
-
-      {/* Env switch */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div role="tablist" aria-label="Environment" className="inline-flex rounded-lg border border-border bg-surface p-0.5">
-          {ENVS.map((e) => {
-            const active = e === env;
-            const count = data[e].filter((x) => x.status === "allowed").length;
-            return (
-              <button key={e} role="tab" aria-selected={active} onClick={() => { setEnv(e); setSelectedId(null); }}
-                className={cn("focus-ring flex min-h-9 items-center gap-2 rounded-md px-3 text-sm font-medium capitalize transition-colors",
-                  active ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground")}>
-                {e}<span className="rounded-full bg-background px-1.5 text-[11px] tabular-nums text-muted-2">{count}</span>
-              </button>
-            );
-          })}
-        </div>
-        {env === "production" && (
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
-            <AlertTriangle className="size-3.5" /> Live users — changes apply on next sign-in
-          </span>
+        {view === "users" && (
+          <button onClick={() => setAdding(true)} className={btn.primary}><Plus className="size-4" /> Add access</button>
         )}
       </div>
 
+      {/* View tabs + env switch */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div role="tablist" aria-label="View" className="inline-flex rounded-lg border border-border bg-surface p-0.5">
+          {([["users", "Users"], ["flags", "Feature flags"]] as const).map(([v, label]) => (
+            <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}
+              className={cn("focus-ring min-h-9 rounded-md px-3 text-sm font-medium transition-colors",
+                view === v ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground")}>{label}</button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {env === "production" && (
+            <span className="hidden items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning sm:inline-flex">
+              <AlertTriangle className="size-3.5" /> Live users
+            </span>
+          )}
+          <div role="tablist" aria-label="Environment" className="inline-flex rounded-lg border border-border bg-surface p-0.5">
+            {ENVS.map((e) => {
+              const active = e === env;
+              const count = data[e].filter((x) => x.status === "allowed").length;
+              return (
+                <button key={e} role="tab" aria-selected={active} onClick={() => { setEnv(e); setSelectedId(null); }}
+                  className={cn("focus-ring flex min-h-9 items-center gap-2 rounded-md px-3 text-sm font-medium capitalize transition-colors",
+                    active ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground")}>
+                  {e}<span className="rounded-full bg-background px-1.5 text-[11px] tabular-nums text-muted-2">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {view === "flags" ? (
+        <FlagsPanel cfg={cfg} allowedCount={allowedAll.length} entries={allowedAll} onSetMode={setFlagMode} env={env} />
+      ) : (
+      <>
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat icon={CheckCircle2} label="Allowed" value={allowedAll.length} tone="success" />
@@ -173,7 +200,7 @@ export function AccessManager() {
                     <tr key={e.id} onClick={() => setSelectedId(e.id)}
                       className="cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-surface-2/50">
                       <td className="px-5 py-3"><IdentityCell entry={e} /></td>
-                      <td className="px-4 py-3"><FlagSummary entry={e} /></td>
+                      <td className="px-4 py-3"><FlagSummary entry={e} cfg={cfg} /></td>
                       <td className="px-4 py-3">
                         {disabled
                           ? <span className="inline-flex items-center gap-1.5 rounded-full bg-muted-2/15 px-2 py-0.5 text-xs font-medium text-muted"><span className="size-1.5 rounded-full bg-muted-2" /> Disabled</span>
@@ -194,11 +221,14 @@ export function AccessManager() {
           </div>
         )}
       </section>
+      </>
+      )}
 
       {/* Drawer: per-user feature flags */}
       <UserDrawer
         entry={selected}
         env={env}
+        cfg={cfg}
         onClose={() => setSelectedId(null)}
         onToggleEnabled={toggleEnabled}
         onSetFlag={setFlag}
@@ -226,8 +256,8 @@ function IdentityCell({ entry }: { entry: AccessEntry }) {
   );
 }
 
-function FlagSummary({ entry }: { entry: AccessEntry }) {
-  const on = enabledFlags(entry.flags);
+function FlagSummary({ entry, cfg }: { entry: AccessEntry; cfg: FlagConfig }) {
+  const on = enabledFlags(entry.flags, cfg);
   if (on.length === 0) return <span className="text-xs text-muted-2">No features</span>;
   const shown = on.slice(0, 4);
   return (
@@ -269,13 +299,92 @@ function EmptyState({ hasAny, onAdd, env }: { hasAny: boolean; onAdd: () => void
   );
 }
 
+/* ---- feature flags view (global rollout) -------------------------- */
+
+const MODES: { v: FlagMode; label: string }[] = [
+  { v: "off", label: "No one" },
+  { v: "custom", label: "Custom" },
+  { v: "everyone", label: "Everyone" },
+];
+
+function FlagsPanel({
+  cfg, allowedCount, entries, onSetMode, env,
+}: {
+  cfg: FlagConfig;
+  allowedCount: number;
+  entries: AccessEntry[];
+  onSetMode: (flagId: string, mode: FlagMode) => void;
+  env: Env;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start gap-2.5 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-muted">
+        <Info className="mt-0.5 size-4 shrink-0 text-accent" />
+        <p>
+          Set a flag to <span className="font-medium text-foreground">Everyone</span> to turn it on for
+          all {allowedCount} allowed {env} users at once, <span className="font-medium text-foreground">No one</span> to
+          disable it globally, or <span className="font-medium text-foreground">Custom</span> to decide per user.
+        </p>
+      </div>
+
+      {FLAG_GROUPS.map((group) => {
+        const items = FEATURE_FLAGS.filter((f) => f.group === group);
+        if (items.length === 0) return null;
+        return (
+          <section key={group}>
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-2">{group}</p>
+            <div className="card divide-y divide-border overflow-hidden">
+              {items.map((f) => {
+                const Icon = f.icon;
+                const mode = cfg[f.id] ?? "custom";
+                const count = mode === "everyone" ? allowedCount : mode === "off" ? 0 : entries.filter((e) => e.flags?.[f.id]).length;
+                const summary =
+                  mode === "everyone" ? `On for all ${allowedCount} users`
+                    : mode === "off" ? "Off for all users"
+                      : `${count} of ${allowedCount} users`;
+                return (
+                  <div key={f.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+                    <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", mode === "everyone" ? "bg-accent/12 text-accent" : "bg-surface-2 text-muted-2")}>
+                      <Icon className="size-[18px]" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{f.label}</p>
+                      <p className="text-xs text-muted-2">{f.description}</p>
+                    </div>
+                    <span className="flex items-center gap-1.5 text-xs text-muted sm:mr-1 sm:w-36 sm:justify-end">
+                      <Users className="size-3.5 text-muted-2" /> {summary}
+                    </span>
+                    <div role="radiogroup" aria-label={`${f.label} rollout`} className="inline-flex rounded-lg border border-border bg-background p-0.5">
+                      {MODES.map((m) => {
+                        const on = mode === m.v;
+                        const activeCls = m.v === "everyone" ? "bg-accent/15 text-accent" : m.v === "off" ? "bg-muted-2/15 text-foreground" : "bg-surface-2 text-foreground";
+                        return (
+                          <button key={m.v} role="radio" aria-checked={on} onClick={() => onSetMode(f.id, m.v)}
+                            className={cn("focus-ring min-h-8 rounded-md px-2.5 text-xs font-medium transition-colors", on ? activeCls : "text-muted hover:text-foreground")}>
+                            {m.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ---- user drawer (feature flags) ---------------------------------- */
 
 function UserDrawer({
-  entry, env, onClose, onToggleEnabled, onSetFlag, onRemove,
+  entry, env, cfg, onClose, onToggleEnabled, onSetFlag, onRemove,
 }: {
   entry: AccessEntry | null;
   env: Env;
+  cfg: FlagConfig;
   onClose: () => void;
   onToggleEnabled: (id: string) => void;
   onSetFlag: (id: string, flagId: string, val: boolean) => void;
@@ -324,7 +433,7 @@ function UserDrawer({
           <div>
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-2">Feature flags</h3>
-              <span className="text-xs text-muted-2">{flagCount(e.flags)} / {FEATURE_FLAGS.length} on</span>
+              <span className="text-xs text-muted-2">{flagCount(e.flags, cfg)} / {FEATURE_FLAGS.length} on</span>
             </div>
             <div className="space-y-5">
               {FLAG_GROUPS.map((group) => {
@@ -336,7 +445,9 @@ function UserDrawer({
                     <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
                       {items.map((f) => {
                         const Icon = f.icon;
-                        const on = !!e.flags?.[f.id];
+                        const mode = cfg[f.id];
+                        const global = mode === "everyone" || mode === "off";
+                        const on = effectiveFlag(mode, e.flags?.[f.id]);
                         return (
                           <div key={f.id} className="flex items-center gap-3 bg-surface px-3.5 py-3">
                             <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", on ? "bg-accent/12 text-accent" : "bg-surface-2 text-muted-2")}>
@@ -344,9 +455,13 @@ function UserDrawer({
                             </span>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium">{f.label}</p>
-                              <p className="text-xs text-muted-2">{f.description}</p>
+                              <p className="text-xs text-muted-2">
+                                {global
+                                  ? mode === "everyone" ? "On for everyone (global)" : "Off for everyone (global)"
+                                  : f.description}
+                              </p>
                             </div>
-                            <Switch checked={on} onChange={(v) => onSetFlag(e.id, f.id, v)} label={`${f.label} for ${e.value}`} disabled={disabled} />
+                            <Switch checked={on} onChange={(v) => onSetFlag(e.id, f.id, v)} label={`${f.label} for ${e.value}`} disabled={disabled || global} />
                           </div>
                         );
                       })}
