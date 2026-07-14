@@ -41,10 +41,14 @@ export function setLiveTrading(
 
 /**
  * Set one per-user feature flag by key.
- * Backend contract: PATCH /admin/users/{id}/flags { key, enabled }
- * — key "live_trading" routes to the live_trading_enabled column; every other
- *   key is stored in the users.feature_flags JSONB map.
+ * — "live_trading" bridges to the EXISTING endpoint (PATCH /admin/users/{id}
+ *   { live_trading_enabled }) so it works today.
+ * — every other key uses the generic PATCH /admin/users/{id}/flags { key, enabled }
+ *   (backend to expose; stores in users.feature_flags JSONB).
  */
 export function setUserFlag(env: Platform, id: string, key: string, enabled: boolean): Promise<unknown> {
+  if (key === "live_trading") {
+    return call(env, "PATCH", `/admin/users/${id}`, { live_trading_enabled: enabled });
+  }
   return call(env, "PATCH", `/admin/users/${id}/flags`, { key, enabled });
 }
