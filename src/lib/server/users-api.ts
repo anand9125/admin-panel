@@ -1,0 +1,38 @@
+import "server-only";
+import { call, type Platform } from "./backend";
+
+/** A signed-up user, as returned by the ops-token /admin/users API. */
+export interface AdminUser {
+  id: string;
+  wallet_address: string;
+  username: string | null;
+  display_name: string | null;
+  email: string | null;
+  funding_wallet_address: string | null;
+  live_trading_enabled: boolean;
+  is_onboarded: boolean;
+  created_at: string;
+}
+
+export interface ListUsersResponse {
+  total: number;
+  users: AdminUser[];
+}
+
+/** List users (optionally filtered). `search` matches email/username/display/wallets. */
+export function listUsers(env: Platform, opts: { search?: string; limit?: number } = {}): Promise<ListUsersResponse> {
+  const q = new URLSearchParams();
+  if (opts.search) q.set("search", opts.search);
+  if (opts.limit) q.set("limit", String(opts.limit));
+  const qs = q.toString();
+  return call<ListUsersResponse>(env, "GET", `/admin/users${qs ? `?${qs}` : ""}`);
+}
+
+/** Toggle a user's live-trading (real-money bot) entitlement. */
+export function setLiveTrading(
+  env: Platform,
+  id: string,
+  enabled: boolean,
+): Promise<{ id: string; live_trading_enabled: boolean }> {
+  return call(env, "PATCH", `/admin/users/${id}`, { live_trading_enabled: enabled });
+}

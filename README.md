@@ -1,26 +1,41 @@
-# Trenchers — Landing Page
+# Trenchers Admin
 
-Marketing landing page for **Trenchers**, an all-in-one Solana trading terminal:
-a real-time token feed, AI trading agents, and one-click execution.
+Internal admin panel for **platform access** and **live-trading entitlement**,
+wired to the `solana-terminal` backend over its ops-token admin API.
 
-Dark, premium-crypto design. Single static page — no backend, no auth.
+## What it does
 
-## Stack
+- **Platform access** — manage the login allow-list (`/admin/whitelist`): add an
+  email/wallet, approve people who requested access, enable/disable, remove.
+- **Live trading** — toggle a user's real-money bot entitlement
+  (`users.live_trading_enabled`) via `/admin/users`. Searchable.
+- Both are per environment (**staging** / **production**), switched in the URL.
 
-- Next.js (App Router) + TypeScript
-- Tailwind CSS v4 (design tokens in `src/app/globals.css`)
-- `lucide-react` icons, Geist / Geist Mono via `next/font`
+## Architecture
 
-## Structure
+- Next.js (App Router) + TypeScript + Tailwind v4.
+- **Auth**: Google OAuth locked to `@trenchers.ai` (Auth.js). Every route gated in
+  `src/proxy.ts`.
+- **Backend calls are server-only** (`src/lib/server/*`, `import "server-only"`).
+  The `X-Ops-Token` never reaches the browser. Mutations run through server
+  actions in `src/app/actions.ts`.
+- No database of its own — it's a thin client of the solana-terminal admin API.
 
-- `src/app/page.tsx` — the landing page (hero, stats, features, how-it-works, FAQ, CTA, footer)
-- `src/components/site-nav.tsx` — sticky nav + mobile menu
-- `src/app/globals.css` — theme tokens, backdrop glow/grid, buttons, animations
+## Backend it talks to (already exists, no Rust changes)
 
-The "Launch app" / "Sign in" links point at `APP_URL` (currently
-`https://trenchers.ai`) — update that constant in `page.tsx` and `site-nav.tsx`.
+| Feature | Route (X-Ops-Token) |
+|---|---|
+| List / add / enable-disable / remove access | `GET/POST/PATCH/DELETE /admin/whitelist` |
+| List users, toggle live trading | `GET /admin/users`, `PATCH /admin/users/{id}` |
 
-## Develop
+## Configure
+
+Copy `.env.example` → `.env.local` and fill in:
+
+- `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` (add this app's callback
+  `https://<domain>/api/auth/callback/google` to the Google OAuth client)
+- `SOLANA_TERMINAL_API_URL_PRODUCTION` + `OPS_SERVICE_TOKEN_PRODUCTION`
+  (token must match `OPS_SERVICE_TOKEN` on the backend). Staging vars optional.
 
 ```bash
 pnpm install
@@ -28,6 +43,4 @@ pnpm dev        # http://localhost:3000
 pnpm build && pnpm start
 ```
 
-## Deploy
-
-Any static/Next host (Vercel is simplest). No environment variables required.
+Until the backend vars are set, each view shows a clear "not configured" state.
