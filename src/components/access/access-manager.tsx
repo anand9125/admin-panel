@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  Mail, Wallet, Plus, Check, X, Search, Clock, AlertTriangle,
+  Mail, Wallet, Plus, Check, X, Search, Clock,
   ShieldCheck, Trash2, CheckCircle2, Inbox, ChevronRight, Ban, Info, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -97,25 +97,21 @@ export function AccessManager() {
                 view === v ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground")}>{label}</button>
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {env === "production" && (
-            <span className="hidden items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning sm:inline-flex">
-              <AlertTriangle className="size-3.5" /> Live users
-            </span>
-          )}
-          <div role="tablist" aria-label="Environment" className="inline-flex rounded-lg border border-border bg-surface p-0.5">
-            {ENVS.map((e) => {
-              const active = e === env;
-              const count = data[e].filter((x) => x.status === "allowed").length;
-              return (
-                <button key={e} role="tab" aria-selected={active} onClick={() => { setEnv(e); setSelectedId(null); }}
-                  className={cn("focus-ring flex min-h-9 items-center gap-2 rounded-md px-3 text-sm font-medium capitalize transition-colors",
-                    active ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground")}>
-                  {e}<span className="rounded-full bg-background px-1.5 text-[11px] tabular-nums text-muted-2">{count}</span>
-                </button>
-              );
-            })}
-          </div>
+        <div role="tablist" aria-label="Environment" className="inline-flex rounded-lg border border-border bg-surface p-0.5">
+          {ENVS.map((e) => {
+            const active = e === env;
+            const count = data[e].filter((x) => x.status === "allowed").length;
+            return (
+              <button key={e} role="tab" aria-selected={active} onClick={() => { setEnv(e); setSelectedId(null); }}
+                title={e === "production" ? "Production — live users, changes apply on next sign-in" : undefined}
+                className={cn("focus-ring flex min-h-9 items-center gap-2 rounded-md px-3 text-sm font-medium capitalize transition-colors",
+                  active ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground")}>
+                {e === "production" && <span className="size-1.5 rounded-full bg-warning" aria-hidden="true" />}
+                {e}
+                <span className="rounded-full bg-background px-1.5 text-[11px] tabular-nums text-muted-2">{count}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -276,14 +272,20 @@ function FlagSummary({ entry, cfg }: { entry: AccessEntry; cfg: FlagConfig }) {
 }
 
 function Stat({ icon: Icon, label, value, tone }: { icon: typeof Mail; label: string; value: number; tone: "success" | "warning" | "muted" }) {
-  const toneCls = { success: "text-success", warning: "text-warning", muted: "text-muted-2" }[tone];
+  const chip = {
+    success: "bg-success/12 text-success",
+    warning: "bg-warning/12 text-warning",
+    muted: "bg-surface-2 text-muted-2",
+  }[tone];
   return (
-    <div className="card p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted">{label}</span>
-        <Icon className={cn("size-4", toneCls)} />
+    <div className="card flex items-center gap-3.5 p-4">
+      <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", chip)}>
+        <Icon className="size-[18px]" />
+      </span>
+      <div className="min-w-0">
+        <div className="font-mono text-[26px] font-semibold leading-none tabular-nums">{value}</div>
+        <div className="mt-1.5 text-xs text-muted">{label}</div>
       </div>
-      <div className="mt-1.5 font-mono text-2xl font-semibold tabular-nums">{value}</div>
     </div>
   );
 }
