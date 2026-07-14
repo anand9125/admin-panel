@@ -5,6 +5,7 @@ import { BackendError, type Platform } from "@/lib/server/backend";
 import { addWhitelist, setWhitelistEnabled, removeWhitelist, type WhitelistKind } from "@/lib/server/whitelist-api";
 import { setUserFlag as setUserFlagApi } from "@/lib/server/users-api";
 import { setFlagModeApi } from "@/lib/server/flags-api";
+import { setPaperSeedDefault, setUserPaperSeed } from "@/lib/server/paper-api";
 import type { FlagMode } from "@/lib/flags";
 
 export interface ActionResult {
@@ -95,6 +96,46 @@ export async function setFlagMode(env: string, key: string, mode: FlagMode): Pro
     const platform = asPlatform(env);
     await setFlagModeApi(platform, key, mode);
     revalidatePath("/feature-flags");
+    return { ok: true };
+  } catch (e) {
+    return { error: friendly(e) };
+  }
+}
+
+/* ---- paper SOL ---------------------------------------------------- */
+
+function validLamports(lamports: number | null): string | null {
+  if (lamports === null) return null;
+  if (!Number.isFinite(lamports) || !Number.isInteger(lamports)) return "Enter a valid amount.";
+  if (lamports < 0) return "Amount can't be negative.";
+  if (!Number.isSafeInteger(lamports)) return "That amount is too large.";
+  return null;
+}
+
+/** Set (or clear with `null`) the global default paper-SOL seed. */
+export async function setPaperDefault(env: string, lamports: number | null): Promise<ActionResult> {
+  try {
+    await actor();
+    const platform = asPlatform(env);
+    const bad = validLamports(lamports);
+    if (bad) return { error: bad };
+    await setPaperSeedDefault(platform, lamports);
+    revalidatePath("/paper-sol");
+    return { ok: true };
+  } catch (e) {
+    return { error: friendly(e) };
+  }
+}
+
+/** Set (or clear with `null`) a user's per-user paper-SOL seed override. */
+export async function setUserPaper(env: string, id: string, lamports: number | null): Promise<ActionResult> {
+  try {
+    await actor();
+    const platform = asPlatform(env);
+    const bad = validLamports(lamports);
+    if (bad) return { error: bad };
+    await setUserPaperSeed(platform, id, lamports);
+    revalidatePath("/paper-sol");
     return { ok: true };
   } catch (e) {
     return { error: friendly(e) };

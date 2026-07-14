@@ -10,6 +10,9 @@ export interface AdminUser {
   email: string | null;
   funding_wallet_address: string | null;
   live_trading_enabled: boolean;
+  /** Per-user paper-SOL seed override in lamports, or `null` to inherit the
+   *  global default. Managed via PATCH /admin/users/{id}/paper-seed. */
+  paper_seed_lamports: number | null;
   /** Generic per-user feature flags (backend `users.feature_flags` JSONB). */
   feature_flags?: Record<string, boolean>;
   is_onboarded: boolean;

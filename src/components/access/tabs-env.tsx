@@ -2,10 +2,10 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { PLATFORMS, type Platform } from "@/lib/server/backend";
 
-const PATHS = { access: "/", flags: "/feature-flags" } as const;
+const PATHS = { access: "/", flags: "/feature-flags", paper: "/paper-sol" } as const;
 
 /** Environment switch (staging / production). Env lives in the URL. */
-export function TabsEnv({ tab, env }: { tab: "access" | "flags"; env: Platform }) {
+export function TabsEnv({ tab, env }: { tab: "access" | "flags" | "paper"; env: Platform }) {
   const path = PATHS[tab];
   return (
     <div role="tablist" aria-label="Environment" className="inline-flex rounded-lg border border-border bg-surface p-0.5">
