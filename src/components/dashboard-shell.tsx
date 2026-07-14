@@ -4,13 +4,13 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShieldCheck, Zap, Bell, Menu, X, LogOut } from "lucide-react";
+import { ShieldCheck, ToggleRight, Bell, Menu, X, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logout } from "@/app/actions";
 
 const NAV = [
   { label: "Platform access", icon: ShieldCheck, href: "/" },
-  { label: "Live trading", icon: Zap, href: "/live-trading" },
+  { label: "Feature flags", icon: ToggleRight, href: "/feature-flags" },
 ];
 
 function active(pathname: string, href: string) {

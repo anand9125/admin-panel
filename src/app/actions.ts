@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { auth, emailAllowed, signOut } from "@/auth";
 import { BackendError, type Platform } from "@/lib/server/backend";
 import { addWhitelist, setWhitelistEnabled, removeWhitelist, type WhitelistKind } from "@/lib/server/whitelist-api";
-import { setLiveTrading } from "@/lib/server/users-api";
+import { setUserFlag as setUserFlagApi } from "@/lib/server/users-api";
+import { setFlagModeApi } from "@/lib/server/flags-api";
+import type { FlagMode } from "@/lib/flags";
 
 export interface ActionResult {
   ok?: true;
@@ -53,7 +55,8 @@ export async function addEntry(env: string, formData: FormData): Promise<ActionR
 export async function toggleEntry(env: string, id: string, enabled: boolean): Promise<ActionResult> {
   try {
     await actor();
-    await setWhitelistEnabled(asPlatform(env), id, enabled);
+    const platform = asPlatform(env);
+    await setWhitelistEnabled(platform, id, enabled);
     revalidatePath("/");
     return { ok: true };
   } catch (e) {
@@ -64,7 +67,8 @@ export async function toggleEntry(env: string, id: string, enabled: boolean): Pr
 export async function deleteEntry(env: string, id: string): Promise<ActionResult> {
   try {
     await actor();
-    await removeWhitelist(asPlatform(env), id);
+    const platform = asPlatform(env);
+    await removeWhitelist(platform, id);
     revalidatePath("/");
     return { ok: true };
   } catch (e) {
@@ -72,13 +76,28 @@ export async function deleteEntry(env: string, id: string): Promise<ActionResult
   }
 }
 
-/* ---- live trading (per-user entitlement) -------------------------- */
+/* ---- feature flags ------------------------------------------------ */
 
-export async function setUserLiveTrading(env: string, id: string, enabled: boolean): Promise<ActionResult> {
+/** Set one per-user feature flag (key "live_trading" bridges to its column). */
+export async function setUserFlag(env: string, id: string, key: string, enabled: boolean): Promise<ActionResult> {
   try {
     await actor();
-    await setLiveTrading(asPlatform(env), id, enabled);
-    revalidatePath("/live-trading");
+    const platform = asPlatform(env);
+    await setUserFlagApi(platform, id, key, enabled);
+    revalidatePath("/feature-flags");
+    return { ok: true };
+  } catch (e) {
+    return { error: friendly(e) };
+  }
+}
+
+/** Set a flag's global rollout mode (off / custom / everyone). */
+export async function setFlagMode(env: string, key: string, mode: FlagMode): Promise<ActionResult> {
+  try {
+    await actor();
+    const platform = asPlatform(env);
+    await setFlagModeApi(platform, key, mode);
+    revalidatePath("/feature-flags");
     return { ok: true };
   } catch (e) {
     return { error: friendly(e) };

@@ -1,0 +1,304 @@
+"use client";
+
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Search, User as UserIcon, ChevronRight, Info, Users, SlidersHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Drawer } from "@/components/ui/drawer";
+import { Switch } from "@/components/ui/switch";
+import { setUserFlag, setFlagMode, type ActionResult } from "@/app/actions";
+import type { Platform } from "@/lib/server/backend";
+import type { AdminUser } from "@/lib/server/users-api";
+import {
+  FEATURE_FLAGS, FLAG_GROUPS, effectiveFlag, enabledFlags, flagCount, userFlagValue,
+  type FlagMode, type FlagConfig,
+} from "@/lib/flags";
+
+type View = "rollout" | "users";
+const MODES: { v: FlagMode; label: string }[] = [
+  { v: "off", label: "No one" },
+  { v: "custom", label: "Custom" },
+  { v: "everyone", label: "Everyone" },
+];
+
+function displayName(u: AdminUser) {
+  return u.display_name || u.username || u.email || (u.wallet_address ? `${u.wallet_address.slice(0, 4)}…${u.wallet_address.slice(-4)}` : "Unknown");
+}
+
+export function FeatureFlagsManager({
+  env, users, total, config, demo, envSwitch,
+}: {
+  env: Platform;
+  users: AdminUser[];
+  total: number;
+  config: FlagConfig;
+  demo: boolean;
+  envSwitch?: React.ReactNode;
+}) {
+  const router = useRouter();
+  const [, start] = useTransition();
+  const [view, setView] = useState<View>("users");
+  const [localUsers, setLocalUsers] = useState(users);
+  const [cfg, setCfg] = useState(config);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  // Resync when the server sends fresh data (real mode, after a mutation).
+  useEffect(() => setLocalUsers(users), [users]);
+  useEffect(() => setCfg(config), [config]);
+
+  const persist = (fn: () => Promise<ActionResult>) => {
+    if (demo) return; // local-only demo: optimistic state already applied
+    start(async () => {
+      const res = await fn();
+      if (res?.error) { setError(res.error); router.refresh(); }
+    });
+  };
+
+  const setMode = (key: string, mode: FlagMode) => {
+    setError(null);
+    setCfg((c) => ({ ...c, [key]: mode }));
+    persist(() => setFlagMode(env, key, mode));
+  };
+  const setFlag = (userId: string, key: string, val: boolean) => {
+    setError(null);
+    setLocalUsers((list) => list.map((u) => (u.id === userId
+      ? (key === "live_trading"
+        ? { ...u, live_trading_enabled: val }
+        : { ...u, feature_flags: { ...u.feature_flags, [key]: val } })
+      : u)));
+    persist(() => setUserFlag(env, userId, key, val));
+  };
+
+  const selected = selectedId ? localUsers.find((u) => u.id === selectedId) ?? null : null;
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return localUsers.filter((u) => !s || [u.email, u.username, u.display_name, u.wallet_address, u.funding_wallet_address].some((f) => f?.toLowerCase().includes(s)));
+  }, [localUsers, q]);
+
+  return (
+    <div className="space-y-6">
+      {error && <div className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">{error}</div>}
+
+      {/* Environment switch (left) + inner tabs (right), on one row */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {envSwitch}
+        <div className="inline-flex rounded-lg border border-border bg-surface p-0.5">
+          {([["users", "Per user", Users], ["rollout", "Rollout", SlidersHorizontal]] as const).map(([v, label, Icon]) => (
+            <button key={v} onClick={() => setView(v)} aria-pressed={view === v}
+              className={cn("focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors",
+                view === v ? "bg-surface-2 text-foreground" : "text-muted hover:text-foreground")}>
+              <Icon className="size-3.5" /> {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {view === "rollout" ? (
+        <Rollout cfg={cfg} users={localUsers} total={total} onSetMode={setMode} />
+      ) : (
+        <UsersList env={env} users={filtered} total={total} cfg={cfg} q={q} setQ={setQ} onOpen={setSelectedId} />
+      )}
+
+      <UserDrawer user={selected} env={env} cfg={cfg} onClose={() => setSelectedId(null)} onSetFlag={setFlag} />
+    </div>
+  );
+}
+
+/* ---- Rollout view ------------------------------------------------- */
+
+function Rollout({ cfg, users, total, onSetMode }: { cfg: FlagConfig; users: AdminUser[]; total: number; onSetMode: (k: string, m: FlagMode) => void }) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start gap-2.5 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-muted">
+        <Info className="mt-0.5 size-4 shrink-0 text-accent" />
+        <p>
+          Set a flag to <span className="font-medium text-foreground">Everyone</span> to enable it for all users at once,{" "}
+          <span className="font-medium text-foreground">No one</span> to disable it globally, or{" "}
+          <span className="font-medium text-foreground">Custom</span> to decide per user.
+        </p>
+      </div>
+      {FLAG_GROUPS.map((group) => {
+        const items = FEATURE_FLAGS.filter((f) => f.group === group);
+        if (!items.length) return null;
+        return (
+          <section key={group}>
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-2">{group}</p>
+            <div className="card divide-y divide-border overflow-hidden">
+              {items.map((f) => {
+                const Icon = f.icon;
+                const mode = cfg[f.id] ?? "custom";
+                const count = mode === "everyone" ? total : mode === "off" ? 0 : users.filter((u) => userFlagValue(u, f.id)).length;
+                const summary = mode === "everyone" ? `All ${total} users` : mode === "off" ? "Off for all" : `${count} of ${total}`;
+                return (
+                  <div key={f.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+                    <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", mode === "everyone" ? "bg-accent/12 text-accent" : "bg-surface-2 text-muted-2")}>
+                      <Icon className="size-[18px]" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{f.label}</p>
+                      <p className="text-xs text-muted-2">{f.description}</p>
+                    </div>
+                    <span className="flex items-center gap-1.5 text-xs text-muted sm:mr-1 sm:w-32 sm:justify-end">
+                      <Users className="size-3.5 text-muted-2" /> {summary}
+                    </span>
+                    <div role="radiogroup" aria-label={`${f.label} rollout`} className="inline-flex rounded-lg border border-border bg-background p-0.5">
+                      {MODES.map((m) => {
+                        const on = mode === m.v;
+                        const activeCls = m.v === "everyone" ? "bg-accent/15 text-accent" : m.v === "off" ? "bg-muted-2/15 text-foreground" : "bg-surface-2 text-foreground";
+                        return (
+                          <button key={m.v} role="radio" aria-checked={on} onClick={() => onSetMode(f.id, m.v)}
+                            className={cn("focus-ring min-h-8 rounded-md px-2.5 text-xs font-medium transition-colors", on ? activeCls : "text-muted hover:text-foreground")}>
+                            {m.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---- Per-user view ------------------------------------------------ */
+
+function UsersList({ env, users, total, cfg, q, setQ, onOpen }: {
+  env: Platform; users: AdminUser[]; total: number; cfg: FlagConfig; q: string; setQ: (v: string) => void; onOpen: (id: string) => void;
+}) {
+  void env;
+  return (
+    <section className="card overflow-hidden">
+      <div className="flex flex-col gap-3 border-b border-border px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <Users className="size-4 text-accent" />
+          <h2 className="text-sm font-semibold">Users</h2>
+          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs tabular-nums text-muted">{q ? `${users.length} of ${total}` : total}</span>
+        </div>
+        <label className="relative flex items-center">
+          <Search className="pointer-events-none absolute left-2.5 size-4 text-muted-2" />
+          <span className="sr-only">Search users</span>
+          <input value={q} onChange={(e) => setQ(e.target.value)} type="search" placeholder="Search email, wallet, name…"
+            className="focus-ring h-9 w-full rounded-lg border border-border bg-background pl-8 pr-3 text-sm placeholder:text-muted-2 sm:w-64" />
+        </label>
+      </div>
+      {users.length === 0 ? (
+        <div className="flex flex-col items-center px-6 py-14 text-center">
+          <span className="flex size-11 items-center justify-center rounded-full bg-surface-2 text-muted-2"><UserIcon className="size-5" /></span>
+          <p className="mt-3 text-sm font-medium">{q ? "No users match" : "No users yet"}</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-2">
+                <th className="px-5 py-2.5 font-medium">User</th>
+                <th className="px-4 py-2.5 font-medium">Flags</th>
+                <th className="px-4 py-2.5 text-right font-medium">Manage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => {
+                const on = enabledFlags(u, cfg);
+                return (
+                  <tr key={u.id} onClick={() => onOpen(u.id)} className="cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-surface-2/50">
+                    <td className="px-5 py-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-muted"><UserIcon className="size-4" /></span>
+                        <div className="min-w-0">
+                          <div className="truncate text-xs font-medium text-foreground">{displayName(u)}</div>
+                          {u.email && <div className="truncate font-mono text-[11px] text-muted-2">{u.email}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {on.length === 0 ? <span className="text-xs text-muted-2">No flags</span> : (
+                        <div className="flex items-center gap-1.5">
+                          {on.slice(0, 4).map((f) => { const Icon = f.icon; return (
+                            <span key={f.id} title={f.label} className="flex size-6 items-center justify-center rounded-md bg-accent/12 text-accent"><Icon className="size-3.5" /></span>
+                          ); })}
+                          {on.length > 4 && <span className="text-xs text-muted-2">+{on.length - 4}</span>}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end">
+                        <button onClick={(ev) => { ev.stopPropagation(); onOpen(u.id); }} aria-label={`Manage ${displayName(u)}`} className="focus-ring inline-flex size-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-foreground">
+                          <ChevronRight className="size-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* ---- Per-user drawer ---------------------------------------------- */
+
+function UserDrawer({ user, env, cfg, onClose, onSetFlag }: {
+  user: AdminUser | null; env: Platform; cfg: FlagConfig; onClose: () => void; onSetFlag: (userId: string, key: string, val: boolean) => void;
+}) {
+  const u = user;
+  return (
+    <Drawer
+      open={!!u}
+      onClose={onClose}
+      title={u && (
+        <div className="flex items-center gap-3">
+          <span className="flex size-9 items-center justify-center rounded-lg bg-surface-2 text-muted"><UserIcon className="size-4" /></span>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-medium">{displayName(u)}</div>
+            <div className="truncate font-mono text-xs text-muted-2">{u.email ?? u.wallet_address}</div>
+          </div>
+        </div>
+      )}
+    >
+      {u && (
+        <div className="space-y-5">
+          <div className="mb-1 flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-2">Feature flags · {env}</h3>
+            <span className="text-xs text-muted-2">{flagCount(u, cfg)} / {FEATURE_FLAGS.length} on</span>
+          </div>
+          {FLAG_GROUPS.map((group) => {
+            const items = FEATURE_FLAGS.filter((f) => f.group === group);
+            if (!items.length) return null;
+            return (
+              <div key={group}>
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-2">{group}</p>
+                <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+                  {items.map((f) => {
+                    const Icon = f.icon;
+                    const mode = cfg[f.id];
+                    const global = mode === "everyone" || mode === "off";
+                    const on = effectiveFlag(mode, userFlagValue(u, f.id));
+                    return (
+                      <div key={f.id} className="flex items-center gap-3 bg-surface px-3.5 py-3">
+                        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", on ? "bg-accent/12 text-accent" : "bg-surface-2 text-muted-2")}><Icon className="size-4" /></span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">{f.label}</p>
+                          <p className="text-xs text-muted-2">{global ? (mode === "everyone" ? "On for everyone (global)" : "Off for everyone (global)") : f.description}</p>
+                        </div>
+                        <Switch checked={on} onChange={(v) => onSetFlag(u.id, f.id, v)} disabled={global} label={`${f.label} for ${displayName(u)}`} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Drawer>
+  );
+}
