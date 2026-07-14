@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth, emailAllowed, signOut } from "@/auth";
 import { BackendError, type Platform } from "@/lib/server/backend";
 import { addWhitelist, setWhitelistEnabled, removeWhitelist, type WhitelistKind } from "@/lib/server/whitelist-api";
 import { setUserFlag as setUserFlagApi } from "@/lib/server/users-api";
@@ -13,11 +12,9 @@ export interface ActionResult {
   error?: string;
 }
 
+// Auth disabled for now — attribute changes to a generic operator.
 async function actor(): Promise<string> {
-  const session = await auth();
-  const email = session?.user?.email;
-  if (!emailAllowed(email)) throw new Error("unauthorized");
-  return email!.toLowerCase();
+  return "admin";
 }
 
 function asPlatform(env: string): Platform {
@@ -102,10 +99,4 @@ export async function setFlagMode(env: string, key: string, mode: FlagMode): Pro
   } catch (e) {
     return { error: friendly(e) };
   }
-}
-
-/* ---- session ------------------------------------------------------ */
-
-export async function logout(): Promise<void> {
-  await signOut({ redirectTo: "/login" });
 }

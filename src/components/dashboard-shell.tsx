@@ -4,9 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShieldCheck, ToggleRight, Bell, Menu, X, LogOut } from "lucide-react";
+import { ShieldCheck, ToggleRight, Bell, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { logout } from "@/app/actions";
 
 const NAV = [
   { label: "Platform access", icon: ShieldCheck, href: "/" },
@@ -17,7 +16,7 @@ function active(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-function SidebarBody({ email, onNavigate }: { email: string; onNavigate?: () => void }) {
+function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
     <div className="flex h-full flex-col">
@@ -44,27 +43,20 @@ function SidebarBody({ email, onNavigate }: { email: string; onNavigate?: () => 
 
       <div className="border-t border-border p-3">
         <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-2 text-xs font-semibold text-white">
-            {email.slice(0, 1).toUpperCase()}
-          </span>
-          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted" title={email}>{email}</span>
-          <form action={logout}>
-            <button type="submit" aria-label="Sign out" className="focus-ring flex size-9 items-center justify-center rounded-lg text-muted-2 transition-colors hover:bg-surface-2 hover:text-danger">
-              <LogOut className="size-[18px]" />
-            </button>
-          </form>
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-2 text-xs font-semibold text-white">A</span>
+          <span className="text-sm font-medium text-muted">Admin</span>
         </div>
       </div>
     </div>
   );
 }
 
-export function DashboardShell({ email, children }: { email: string; children: React.ReactNode }) {
+export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="min-h-screen bg-background">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-border bg-sidebar lg:block">
-        <SidebarBody email={email} />
+        <SidebarBody />
       </aside>
 
       {open && (
@@ -74,7 +66,7 @@ export function DashboardShell({ email, children }: { email: string; children: R
             <button aria-label="Close menu" onClick={() => setOpen(false)} className="focus-ring absolute right-3 top-4 flex size-9 items-center justify-center rounded-lg text-muted hover:bg-surface-2">
               <X className="size-5" />
             </button>
-            <SidebarBody email={email} onNavigate={() => setOpen(false)} />
+            <SidebarBody onNavigate={() => setOpen(false)} />
           </aside>
         </div>
       )}
